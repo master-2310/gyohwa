@@ -185,6 +185,17 @@
   }
   .panel{ display:none; }
   .panel.active{ display:block; }
+  .panel-search-label{
+    display:none;
+    font-family:var(--sans);
+    font-weight:700;
+    font-size:12px;
+    letter-spacing:.04em;
+    color:var(--ink-faint);
+    text-transform:uppercase;
+    margin:4px 2px 12px;
+  }
+  .panel-search-label.visible{ display:block; }
 
   .panel-intro{
     font-size:12.5px;
@@ -441,7 +452,7 @@ const CONTENT = [{"id": "yinyang", "label": "음양", "icon": "☯", "items": [{
     panel.className = 'panel' + (idx === 0 ? ' active' : '');
     panel.id = 'panel-' + tab.id;
     panel.setAttribute('role', 'tabpanel');
-    panel.innerHTML = renderItems(tab.items);
+    panel.innerHTML = '<div class="panel-search-label">' + escapeHtml(tab.label) + '</div>' + renderItems(tab.items);
     main.appendChild(panel);
 
     const btn = document.createElement('button');
@@ -450,7 +461,10 @@ const CONTENT = [{"id": "yinyang", "label": "음양", "icon": "☯", "items": [{
     btn.setAttribute('aria-selected', idx === 0 ? 'true' : 'false');
     btn.dataset.target = tab.id;
     btn.innerHTML = '<span class="dot"></span>' + escapeHtml(tab.label);
-    btn.addEventListener('click', () => switchTab(tab.id));
+    btn.addEventListener('click', () => {
+      searchInput.value = '';
+      switchTab(tab.id);
+    });
     tabNav.appendChild(btn);
   });
 
@@ -493,30 +507,46 @@ const CONTENT = [{"id": "yinyang", "label": "음양", "icon": "☯", "items": [{
   document.getElementById('lightboxClose').addEventListener('click', () => lightbox.classList.remove('open'));
   lightbox.addEventListener('click', (e) => { if (e.target === lightbox) lightbox.classList.remove('open'); });
 
-  // search: filter cards within active panel by text content
+  // search: query matches across ALL tabs at once (not just the one currently open),
+  // since the person searching doesn't know in advance which tab holds the answer
   function applySearch(){
     const q = searchInput.value.trim().toLowerCase();
-    searchClear.classList.toggle('show', q.length > 0);
-    const activePanel = document.querySelector('.panel.active');
-    if (!activePanel) return;
-    let anyMatch = false;
-    const cards = activePanel.querySelectorAll('.card');
-    cards.forEach(card => {
-      const text = card.textContent.toLowerCase();
-      const match = !q || text.includes(q);
-      card.style.display = match ? '' : 'none';
-      if (match) anyMatch = true;
-    });
-    let empty = activePanel.querySelector('.empty-state');
-    if (!anyMatch && q){
-      if (!empty){
-        empty = document.createElement('div');
-        empty.className = 'empty-state';
-        empty.textContent = '"' + searchInput.value.trim() + '"에 대한 검색 결과가 없습니다.';
-        activePanel.appendChild(empty);
+    const searching = q.length > 0;
+    searchClear.classList.toggle('show', searching);
+    main.classList.toggle('searching', searching);
+
+    let totalMatches = 0;
+    document.querySelectorAll('.panel').forEach(panel => {
+      const cards = panel.querySelectorAll('.card');
+      let anyMatch = false;
+      cards.forEach(card => {
+        const text = card.textContent.toLowerCase();
+        const match = !q || text.includes(q);
+        card.style.display = match ? '' : 'none';
+        if (match) anyMatch = true;
+      });
+      const label = panel.querySelector('.panel-search-label');
+      if (searching){
+        panel.style.display = anyMatch ? 'block' : 'none';
+        if (label) label.classList.toggle('visible', anyMatch);
+        if (anyMatch) totalMatches++;
+      } else {
+        panel.style.display = '';
+        if (label) label.classList.remove('visible');
       }
-    } else if (empty){
-      empty.remove();
+    });
+
+    let globalEmpty = document.getElementById('globalEmptyState');
+    if (searching && totalMatches === 0){
+      if (!globalEmpty){
+        globalEmpty = document.createElement('div');
+        globalEmpty.id = 'globalEmptyState';
+        globalEmpty.className = 'empty-state';
+        main.appendChild(globalEmpty);
+      }
+      globalEmpty.textContent = '"' + searchInput.value.trim() + '"에 대한 검색 결과가 없습니다.';
+    } else if (globalEmpty){
+      globalEmpty.remove();
     }
   }
   searchInput.addEventListener('input', applySearch);
