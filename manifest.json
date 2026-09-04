@@ -1,7 +1,7 @@
 {
   "name": "교화 자료",
   "short_name": "교화자료",
-  "description": "음양·신관·상제관·종통·천지공사 교화 자료",
+  "description": "치성교화·음양·신관·상제관·종통·천지공사 교화 자료",
   "start_url": "./index.html",
   "scope": "./",
   "id": "./",
